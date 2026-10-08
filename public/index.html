@@ -1,0 +1,428 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <meta name="theme-color" content="#f5f7fb" />
+  <title>到课啦 · 课堂签到</title>
+  <style>
+    :root {
+      color-scheme: light;
+      --ink: #17233b;
+      --muted: #71809a;
+      --line: #e7ebf2;
+      --blue: #315efb;
+      --blue-dark: #244be0;
+      --blue-soft: #eef2ff;
+      --green: #16845b;
+      --green-soft: #eaf8f1;
+      --amber: #aa6a0b;
+      --amber-soft: #fff6e7;
+      --red: #bd4248;
+      --shadow: 0 22px 70px rgba(31, 53, 99, .09);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+      color: var(--ink);
+      background:
+        radial-gradient(ellipse at 10% 5%, rgba(202, 216, 255, .62), transparent 38%),
+        radial-gradient(ellipse at 92% 20%, rgba(228, 219, 255, .56), transparent 31%),
+        #f5f7fb;
+    }
+    button, input, select { font: inherit; }
+    button { cursor: pointer; }
+    .shell { width: min(100% - 32px, 1100px); margin: 0 auto; }
+    header { display: flex; align-items: center; justify-content: space-between; padding: 25px 0 20px; }
+    .brand { display: flex; gap: 11px; align-items: center; font-weight: 800; letter-spacing: -.03em; font-size: 19px; }
+    .brand-mark { width: 36px; height: 36px; border-radius: 12px; display: grid; place-items: center; color: white; background: linear-gradient(145deg, #557cff, #3155ec); box-shadow: 0 7px 18px rgba(49,94,251,.28); }
+    .brand-mark svg { width: 20px; height: 20px; }
+    .top-actions { display: flex; align-items: center; gap: 10px; }
+    .today { color: var(--muted); font-size: 13px; }
+    .button { border: 0; border-radius: 12px; padding: 11px 15px; font-weight: 700; transition: .18s ease; }
+    .button:disabled { opacity: .48; cursor: not-allowed; transform: none; box-shadow: none; }
+    .button-primary { color: white; background: var(--blue); box-shadow: 0 8px 18px rgba(49,94,251,.20); }
+    .button-primary:hover:not(:disabled) { background: var(--blue-dark); transform: translateY(-1px); }
+    .button-quiet { color: #344563; background: #fff; border: 1px solid var(--line); }
+    .button-quiet:hover { border-color: #cbd4e4; background: #fbfcff; }
+    .button-danger { color: var(--red); background: #fff1f1; }
+    .hero { display: grid; grid-template-columns: 1.15fr .85fr; gap: 24px; align-items: stretch; margin: 33px 0 21px; }
+    .hero-copy { padding: 23px 4px 20px; }
+    .eyebrow { display: inline-flex; align-items: center; gap: 7px; border-radius: 99px; padding: 7px 11px; color: #3155ce; background: rgba(255,255,255,.78); font-size: 12px; font-weight: 750; box-shadow: 0 3px 13px rgba(39,69,132,.05); }
+    .eyebrow-dot { width: 7px; height: 7px; border-radius: 50%; background: #4b72ff; }
+    h1 { font-size: clamp(31px, 4vw, 46px); letter-spacing: -.055em; line-height: 1.12; margin: 17px 0 12px; }
+    .hero-copy p { margin: 0; max-width: 485px; color: var(--muted); line-height: 1.75; font-size: 15px; }
+    .hero-visual { min-height: 182px; border-radius: 24px; position: relative; overflow: hidden; background: linear-gradient(135deg,#315efb,#6d85ff 58%,#8b9aff); box-shadow: 0 18px 42px rgba(49,94,251,.2); }
+    .hero-visual:before, .hero-visual:after { content: ""; position: absolute; border-radius: 50%; border: 1px solid rgba(255,255,255,.22); width: 240px; height: 240px; right: -16px; top: 4px; }
+    .hero-visual:after { width: 320px; height: 320px; right: -57px; top: -36px; }
+    .map-lines { position: absolute; inset: 0; opacity: .2; background: repeating-linear-gradient(158deg, transparent 0 24px, white 25px 27px, transparent 28px 53px), repeating-linear-gradient(70deg, transparent 0 47px, white 48px 50px, transparent 51px 88px); }
+    .pin-wrap { position: absolute; left: 52%; top: 43%; transform: translate(-50%,-50%); width: 92px; height: 92px; border: 1px solid rgba(255,255,255,.5); border-radius: 50%; display: grid; place-items: center; background: rgba(255,255,255,.14); }
+    .pin { width: 48px; height: 48px; border-radius: 17px 17px 17px 4px; transform: rotate(-45deg); display: grid; place-items: center; color: #315efb; background: white; box-shadow: 0 10px 20px rgba(27,48,118,.2); }
+    .pin svg { transform: rotate(45deg); width: 23px; height: 23px; }
+    .map-label { position: absolute; left: 21px; bottom: 17px; padding: 9px 12px; border-radius: 11px; color: white; background: rgba(19,37,105,.24); border: 1px solid rgba(255,255,255,.27); backdrop-filter: blur(8px); font-size: 12px; font-weight: 700; }
+    .main-grid { display: grid; grid-template-columns: minmax(0,1.08fr) minmax(310px,.92fr); gap: 20px; align-items: start; }
+    .card { border: 1px solid rgba(229,233,242,.86); background: rgba(255,255,255,.94); border-radius: 21px; box-shadow: var(--shadow); }
+    .checkin-card { padding: 25px; }
+    .card-heading { display: flex; justify-content: space-between; align-items: flex-start; gap: 14px; }
+    .card h2 { margin: 0; font-size: 19px; letter-spacing: -.025em; }
+    .sub { color: var(--muted); font-size: 13px; margin-top: 6px; }
+    .status-pill { border-radius: 99px; padding: 7px 10px; font-size: 11px; font-weight: 800; white-space: nowrap; }
+    .status-pending { background: #f1f3f7; color: #7a8496; }
+    .status-open { background: var(--green-soft); color: var(--green); }
+    .status-closed { background: var(--amber-soft); color: var(--amber); }
+    .rule { height: 1px; background: var(--line); margin: 21px 0; }
+    .location-box { display: flex; align-items: center; gap: 13px; background: #f7f9ff; border: 1px solid #edf0fb; padding: 14px; border-radius: 15px; }
+    .location-icon { width: 42px; height: 42px; flex: none; border-radius: 13px; display: grid; place-items: center; color: var(--blue); background: var(--blue-soft); }
+    .location-icon svg { width: 20px; height: 20px; }
+    .location-title { font-size: 13px; font-weight: 800; }
+    .location-detail { margin-top: 4px; color: var(--muted); font-size: 12px; line-height: 1.45; }
+    .form-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 13px; }
+    .field { margin: 0 0 15px; }
+    label { display: block; color: #3d4a63; font-size: 12px; font-weight: 750; margin: 0 0 8px; }
+    input, select { width: 100%; border: 1px solid #e1e6f0; outline: none; border-radius: 11px; height: 45px; padding: 0 13px; color: var(--ink); background: #fff; transition: .15s; }
+    input::placeholder { color: #a5afc0; }
+    input:focus, select:focus { border-color: #8da5ff; box-shadow: 0 0 0 3px rgba(49,94,251,.09); }
+    .hint { color: #8a95a8; font-size: 11px; line-height: 1.5; margin-top: 6px; }
+    .checkin-action { width: 100%; min-height: 49px; font-size: 14px; margin-top: 3px; }
+    .feedback { display: none; border-radius: 12px; padding: 12px 13px; margin-top: 13px; line-height: 1.55; font-size: 12px; }
+    .feedback.show { display: block; }
+    .feedback.info { background: #f1f5ff; color: #3956ad; }
+    .feedback.success { background: var(--green-soft); color: #126b4a; }
+    .feedback.error { background: #fff1f1; color: #aa353b; }
+    .side-card { padding: 23px; }
+    .class-name { color: #253554; font-size: 16px; font-weight: 800; margin-top: 19px; }
+    .class-placeholder { color: #818ca0; font-weight: 600; }
+    .metric-row { display: flex; align-items: center; justify-content: space-between; padding: 13px 0; border-bottom: 1px solid #f0f2f6; font-size: 12px; }
+    .metric-row:last-of-type { border: 0; }
+    .metric-label { color: var(--muted); }
+    .metric-value { font-weight: 800; color: #34425b; }
+    .side-actions { display: flex; gap: 9px; margin-top: 14px; }
+    .side-actions .button { flex: 1; padding: 10px 8px; font-size: 12px; }
+    .privacy-note { display: flex; gap: 9px; align-items: flex-start; margin-top: 17px; padding: 12px; border-radius: 12px; background: #f8f9fc; color: #7b879b; font-size: 11px; line-height: 1.55; }
+    .privacy-note svg { width: 15px; height: 15px; flex: none; color: #697b9e; margin-top: 1px; }
+    .roster { margin: 20px 0 32px; overflow: hidden; }
+    .roster-head { display: flex; align-items: center; justify-content: space-between; padding: 20px 23px; border-bottom: 1px solid var(--line); }
+    .roster-title { display: flex; gap: 10px; align-items: center; }
+    .count { min-width: 24px; text-align: center; padding: 4px 7px; border-radius: 99px; color: #385bd1; background: #eef2ff; font-size: 11px; font-weight: 800; }
+    .roster-empty { text-align: center; padding: 35px 18px 38px; color: var(--muted); font-size: 12px; }
+    .empty-icon { width: 42px; height: 42px; border-radius: 14px; background: #f4f6fa; color: #97a3b8; display: grid; place-items: center; margin: 0 auto 12px; }
+    .empty-icon svg { width: 21px; height: 21px; }
+    .table-wrap { overflow-x: auto; }
+    table { width: 100%; border-collapse: collapse; min-width: 490px; font-size: 12px; }
+    th, td { text-align: left; padding: 13px 20px; border-bottom: 1px solid #f0f2f6; }
+    th { color: #8994a7; font-size: 11px; font-weight: 700; background: #fcfdff; }
+    td { color: #3e4b62; }
+    tr:last-child td { border-bottom: 0; }
+    .within { color: var(--green); font-weight: 750; }
+    footer { text-align: center; color: #9aa4b5; font-size: 11px; padding: 0 0 26px; }
+    dialog { width: min(100% - 28px, 500px); border: 1px solid #e6eaf2; border-radius: 20px; padding: 0; box-shadow: 0 30px 100px rgba(20,35,69,.25); color: var(--ink); }
+    dialog::backdrop { background: rgba(25,37,63,.38); backdrop-filter: blur(3px); }
+    .dialog-head { padding: 22px 23px 17px; border-bottom: 1px solid var(--line); display: flex; justify-content: space-between; align-items: flex-start; }
+    .dialog-head h2 { font-size: 18px; margin: 0; }
+    .dialog-content { padding: 20px 23px 23px; }
+    .close { border: 0; background: transparent; color: #7f8aa0; font-size: 23px; padding: 0 3px; line-height: 1; }
+    .settings-intro { color: var(--muted); font-size: 12px; line-height: 1.6; margin: 0 0 17px; }
+    .setting-location { display: flex; align-items: center; gap: 9px; margin: -1px 0 15px; }
+    .setting-location .button { padding: 9px 11px; font-size: 12px; white-space: nowrap; }
+    .coords { min-width: 0; overflow-wrap: anywhere; font-size: 11px; color: var(--muted); }
+    .dialog-actions { display: flex; gap: 9px; margin-top: 20px; }
+    .dialog-actions .button { flex: 1; }
+    .secure-tip { background: #fff8e9; color: #87601c; font-size: 11px; line-height: 1.55; padding: 11px 12px; border-radius: 11px; margin-top: 14px; }
+    @media (max-width: 760px) {
+      .hero { grid-template-columns: 1fr; gap: 4px; margin-top: 22px; }
+      .hero-copy { padding: 14px 2px 8px; }
+      .hero-visual { min-height: 150px; }
+      .main-grid { grid-template-columns: 1fr; }
+      header { padding-top: 18px; }
+      .today { display: none; }
+      .checkin-card, .side-card { padding: 20px; }
+    }
+    @media (max-width: 430px) {
+      .shell { width: min(100% - 22px, 1100px); }
+      .brand { font-size: 17px; }
+      .brand-mark { width: 33px; height: 33px; }
+      .top-actions .button { padding: 10px 12px; font-size: 12px; }
+      h1 { font-size: 34px; }
+      .form-grid { grid-template-columns: 1fr; gap: 0; }
+      .roster-head { padding: 17px; }
+      .roster-head .button { padding: 9px 10px; font-size: 11px; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <header>
+      <div class="brand">
+        <div class="brand-mark" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none"><path d="M5 12.5 9.4 17 19 7" stroke="currentColor" stroke-width="2.7" stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+        <span>到课啦</span>
+      </div>
+      <div class="top-actions">
+        <span class="today" id="today"></span>
+        <button class="button button-quiet" id="openSettings">教师设置</button>
+      </div>
+    </header>
+
+    <section class="hero">
+      <div class="hero-copy">
+        <span class="eyebrow"><span class="eyebrow-dot"></span> 位置签到 · 快速到课</span>
+        <h1>上课签到，<br>一步就到。</h1>
+        <p>在课堂附近完成定位，老师确认签到范围后，即可提交本次到课记录。</p>
+      </div>
+      <div class="hero-visual" aria-hidden="true">
+        <div class="map-lines"></div>
+        <div class="pin-wrap"><div class="pin"><svg viewBox="0 0 24 24" fill="none"><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" stroke="currentColor" stroke-width="2"/><circle cx="12" cy="10" r="2.5" stroke="currentColor" stroke-width="2"/></svg></div></div>
+        <div class="map-label" id="mapLabel">等待设置课堂位置</div>
+      </div>
+    </section>
+
+    <main>
+      <div class="main-grid">
+        <section class="card checkin-card">
+          <div class="card-heading">
+            <div><h2>学生签到</h2><div class="sub">填写信息并验证你在课堂附近</div></div>
+            <span id="classStatus" class="status-pill status-pending">尚未设置</span>
+          </div>
+          <div class="rule"></div>
+          <div class="location-box">
+            <div class="location-icon"><svg viewBox="0 0 24 24" fill="none"><path d="M20 10c0 5-8 11-8 11S4 15 4 10a8 8 0 1 1 16 0Z" stroke="currentColor" stroke-width="1.8"/><circle cx="12" cy="10" r="2.5" stroke="currentColor" stroke-width="1.8"/></svg></div>
+            <div><div class="location-title" id="locationTitle">课堂位置待设置</div><div class="location-detail" id="locationDetail">请老师先在“教师设置”中设定上课地点和签到范围。</div></div>
+          </div>
+          <div class="rule"></div>
+          <div class="form-grid">
+            <div class="field"><label for="studentName">姓名</label><input id="studentName" autocomplete="name" maxlength="30" placeholder="请输入姓名"></div>
+            <div class="field"><label for="studentId">学号</label><input id="studentId" autocomplete="off" maxlength="30" placeholder="请输入学号"></div>
+          </div>
+          <button class="button button-primary checkin-action" id="checkinButton" disabled>定位并签到</button>
+          <div id="feedback" class="feedback" role="status" aria-live="polite"></div>
+        </section>
+
+        <aside class="card side-card">
+          <div class="card-heading"><div><h2>本节课堂</h2><div class="sub">签到信息一览</div></div></div>
+          <div class="class-name" id="className">尚未设置课堂</div>
+          <div class="metric-row"><span class="metric-label">签到范围</span><span class="metric-value" id="radiusValue">—</span></div>
+          <div class="metric-row"><span class="metric-label">已签到</span><span class="metric-value" id="attendanceCount">0 人</span></div>
+          <div class="side-actions">
+            <button class="button button-quiet" id="exportButton">导出名单</button>
+            <button class="button button-quiet" id="clearButton">清空记录</button>
+          </div>
+          <div class="privacy-note"><svg viewBox="0 0 24 24" fill="none"><path d="M12 3 5 6v5c0 4.7 2.9 8.3 7 10 4.1-1.7 7-5.3 7-10V6l-7-3Z" stroke="currentColor" stroke-width="1.7"/><path d="m9 12 2 2 4-4" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg><span>点击签到时会将定位发送到服务器校验范围；校验后立即丢弃坐标，只保存签到信息和距离结果。</span></div>
+        </aside>
+      </div>
+
+      <section class="card roster">
+        <div class="roster-head">
+          <div class="roster-title"><h2 style="font-size:16px;margin:0">签到名单</h2><span class="count" id="rosterCount">0</span></div>
+          <button class="button button-quiet" id="refreshButton">刷新名单</button>
+        </div>
+        <div id="rosterContent"></div>
+      </section>
+    </main>
+    <footer>到课啦 · 让每一次到课都清清楚楚</footer>
+  </div>
+
+  <dialog id="settingsDialog">
+    <div class="dialog-head"><div><h2>教师设置</h2><div class="sub">设置课堂和签到地点</div></div><button class="close" id="closeSettings" aria-label="关闭">×</button></div>
+    <div class="dialog-content">
+      <p class="settings-intro">教师先验证管理密码，再在上课教室设置课堂位置和签到范围。学生需在设定范围内才能签到。</p>
+      <div class="field"><label for="adminPassword">教师管理密码</label><input id="adminPassword" type="password" autocomplete="current-password" placeholder="请输入管理密码"><div class="hint">此密码用于查看签到名单和修改课堂设置，请不要分享给学生。</div></div>
+      <button class="button button-quiet" id="verifyAdmin" style="width:100%;margin:-2px 0 16px">验证密码并读取课堂</button>
+      <div class="field"><label for="classInput">课堂名称</label><input id="classInput" maxlength="60" placeholder="例如：高等数学 · 第三节"></div>
+      <div class="field"><label>课堂定位点</label><div class="setting-location"><button class="button button-quiet" id="captureLocation">◎ 使用当前位置</button><span class="coords" id="coordsText">尚未获取坐标</span></div></div>
+      <div class="field"><label for="radiusInput">签到范围</label><select id="radiusInput"><option value="50">50 米</option><option value="100">100 米</option><option value="200" selected>200 米</option><option value="300">300 米</option><option value="500">500 米</option></select><div class="hint">建议结合教室所在楼宇和 GPS 精度设置，范围越小越严格。</div></div>
+      <div class="field"><label><input id="activeInput" type="checkbox" checked style="width:16px;height:16px;vertical-align:-3px;margin-right:7px">允许学生签到</label></div>
+      <div class="secure-tip">浏览器定位通常要求 HTTPS 安全网址，并且需要允许位置权限。若定位不可用，请检查浏览器权限和设备定位服务。</div>
+      <div id="settingsFeedback" class="feedback" role="status"></div>
+      <div class="dialog-actions"><button class="button button-quiet" id="cancelSettings">取消</button><button class="button button-primary" id="saveSettings">保存课堂设置</button></div>
+    </div>
+  </dialog>
+  <dialog id="confirmDialog">
+    <div class="dialog-head"><div><h2>清空签到记录？</h2><div class="sub">此设备保存的本节名单将被删除。</div></div><button class="close" id="closeConfirm" aria-label="关闭">×</button></div>
+    <div class="dialog-content"><div class="dialog-actions" style="margin-top:0"><button class="button button-quiet" id="keepRecords">保留记录</button><button class="button button-danger" id="confirmClear">确认清空</button></div></div>
+  </dialog>
+
+  <script>
+    let settings = null;
+    let records = [];
+    let capturedPoint = null;
+    let adminPassword = '';
+    let adminUnlocked = false;
+    const $ = (id) => document.getElementById(id);
+    const settingsDialog = $('settingsDialog');
+    const confirmDialog = $('confirmDialog');
+    const feedback = $('feedback');
+    const settingsFeedback = $('settingsFeedback');
+
+    function showMessage(element, message, kind = 'info') {
+      element.textContent = message;
+      element.className = `feedback show ${kind}`;
+    }
+    function hideMessage(element) { element.className = 'feedback'; element.textContent = ''; }
+    function esc(value) {
+      return String(value).replace(/[&<>"']/g, (char) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
+    }
+    async function api(path, options = {}) {
+      const response = await fetch(path, { cache: 'no-store', ...options });
+      const data = await response.json().catch(() => ({}));
+      if (!response.ok) {
+        const error = new Error(data.error || '请求未完成，请稍后重试。');
+        error.status = response.status;
+        throw error;
+      }
+      return data;
+    }
+    function authOptions(method = 'GET', body) {
+      return { method, headers: { 'Authorization': `Bearer ${adminPassword}`, ...(body ? {'Content-Type':'application/json'} : {}) }, ...(body ? { body: JSON.stringify(body) } : {}) };
+    }
+    function configured() { return Boolean(settings?.configured); }
+    function render() {
+      const ready = configured();
+      const active = ready && settings.active;
+      $('today').textContent = new Intl.DateTimeFormat('zh-CN', { dateStyle: 'full' }).format(new Date());
+      $('classStatus').textContent = !ready ? '尚未设置' : active ? '签到开放' : '签到已暂停';
+      $('classStatus').className = `status-pill ${!ready ? 'status-pending' : active ? 'status-open' : 'status-closed'}`;
+      $('locationTitle').textContent = ready ? (settings.className || '课堂签到') : '课堂位置待设置';
+      $('locationDetail').textContent = ready ? `签到范围 ${settings.radius} 米 · 由服务器校验` : '请老师先在“教师设置”中设定上课地点和签到范围。';
+      $('className').textContent = ready ? (settings.className || '课堂签到') : '尚未设置课堂';
+      $('className').className = `class-name ${ready ? '' : 'class-placeholder'}`;
+      $('radiusValue').textContent = ready ? `${settings.radius} 米` : '—';
+      $('mapLabel').textContent = ready ? (settings.className || '课堂签到') : '等待设置课堂位置';
+      $('checkinButton').disabled = !ready || !active;
+      $('checkinButton').textContent = !ready ? '等待老师设置课堂' : !active ? '签到暂未开放' : '定位并签到';
+      $('attendanceCount').textContent = adminUnlocked ? `${records.length} 人` : `${settings?.attendanceCount || 0} 人`;
+      $('rosterCount').textContent = adminUnlocked ? records.length : '—';
+      renderRoster();
+    }
+    function renderRoster() {
+      const root = $('rosterContent');
+      if (!adminUnlocked) {
+        root.innerHTML = '<div class="roster-empty"><div class="empty-icon">⌑</div>签到名单仅教师可查看<br><span style="display:inline-block;margin-top:6px">点击右上角“教师设置”验证管理密码</span></div>';
+        return;
+      }
+      if (!records.length) {
+        root.innerHTML = '<div class="roster-empty"><div class="empty-icon"><svg viewBox="0 0 24 24" fill="none"><circle cx="9" cy="8" r="3" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 19v-1a5.5 5.5 0 0 1 11 0v1M16 5.5a3 3 0 0 1 0 5.8M17 14a4.5 4.5 0 0 1 3.5 4.4v.6" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg></div>还没有签到记录<br><span style="display:inline-block;margin-top:6px">签到成功后，记录会显示在这里</span></div>';
+        return;
+      }
+      const rows = records.slice().sort((a,b) => a.checkedInAt.localeCompare(b.checkedInAt)).map((record) => `<tr><td>${esc(record.name)}</td><td>${esc(record.studentId)}</td><td>${new Date(record.checkedInAt).toLocaleTimeString('zh-CN', {hour:'2-digit', minute:'2-digit', second:'2-digit'})}</td><td>${Math.round(record.distanceMeters)} 米</td><td class="within">已签到</td></tr>`).join('');
+      root.innerHTML = `<div class="table-wrap"><table><thead><tr><th>姓名</th><th>学号</th><th>签到时间</th><th>距课堂</th><th>状态</th></tr></thead><tbody>${rows}</tbody></table></div>`;
+    }
+    async function refreshPublic() {
+      const data = await api('/api/public');
+      settings = data.settings;
+      render();
+    }
+    async function loadAdminData() {
+      const data = await api('/api/admin/settings', authOptions());
+      settings = data.settings || { configured: false, className: '', radius: 200, active: true };
+      capturedPoint = settings.point || null;
+      const roster = await api('/api/admin/attendance', authOptions());
+      records = roster.records || [];
+      adminUnlocked = true;
+      $('classInput').value = settings.className || '';
+      $('radiusInput').value = String(settings.radius || 200);
+      $('activeInput').checked = settings.active ?? true;
+      updateCoordsLabel();
+      render();
+      showMessage(settingsFeedback, settings.configured ? '验证通过，已读取课堂设置和签到名单。' : '验证通过，请设置本节课堂的位置和范围。', 'success');
+    }
+    function getPosition() {
+      return new Promise((resolve, reject) => {
+        if (!navigator.geolocation) { reject(new Error('此浏览器不支持定位，请更换浏览器或设备。')); return; }
+        navigator.geolocation.getCurrentPosition(
+          (position) => resolve(position.coords),
+          (error) => reject(new Error(error.code === 1 ? '你拒绝了位置权限。请在浏览器设置中允许此网页获取位置后重试。' : error.code === 2 ? '暂时无法确定你的位置，请开启设备定位服务后重试。' : '获取位置超时，请稍后重试。')),
+          { enableHighAccuracy: true, timeout: 15000, maximumAge: 0 }
+        );
+      });
+    }
+    $('openSettings').addEventListener('click', () => {
+      hideMessage(settingsFeedback);
+      $('adminPassword').value = adminPassword;
+      settingsDialog.showModal();
+      if (!adminUnlocked) $('adminPassword').focus();
+      else loadAdminData().catch((error) => showMessage(settingsFeedback, error.message, 'error'));
+    });
+    $('verifyAdmin').addEventListener('click', async () => {
+      adminPassword = $('adminPassword').value;
+      if (!adminPassword) { showMessage(settingsFeedback, '请输入教师管理密码。', 'error'); return; }
+      $('verifyAdmin').disabled = true;
+      try { await loadAdminData(); }
+      catch (error) { adminUnlocked = false; adminPassword = ''; render(); showMessage(settingsFeedback, error.status === 401 ? '管理密码不正确，请重试。' : error.message, 'error'); }
+      finally { $('verifyAdmin').disabled = false; }
+    });
+    function closeSettings() { settingsDialog.close(); }
+    $('closeSettings').addEventListener('click', closeSettings);
+    $('cancelSettings').addEventListener('click', closeSettings);
+    $('captureLocation').addEventListener('click', async () => {
+      if (!adminUnlocked) { showMessage(settingsFeedback, '请先验证教师管理密码。', 'error'); return; }
+      $('captureLocation').disabled = true;
+      $('captureLocation').textContent = '正在定位…';
+      try {
+        const coords = await getPosition();
+        capturedPoint = { lat: coords.latitude, lon: coords.longitude };
+        updateCoordsLabel();
+        showMessage(settingsFeedback, '课堂位置已获取。保存后学生即可按此位置签到。', 'success');
+      } catch (error) { showMessage(settingsFeedback, error.message, 'error'); }
+      finally { $('captureLocation').disabled = false; $('captureLocation').textContent = '◎ 使用当前位置'; }
+    });
+    function updateCoordsLabel() {
+      $('coordsText').textContent = capturedPoint ? `${capturedPoint.lat.toFixed(5)}, ${capturedPoint.lon.toFixed(5)}` : '尚未获取坐标';
+    }
+    $('saveSettings').addEventListener('click', async () => {
+      const className = $('classInput').value.trim();
+      if (!adminUnlocked) { showMessage(settingsFeedback, '请先验证教师管理密码。', 'error'); return; }
+      if (!className) { showMessage(settingsFeedback, '请填写课堂名称。', 'error'); $('classInput').focus(); return; }
+      if (!capturedPoint) { showMessage(settingsFeedback, '请点击“使用当前位置”设置课堂定位点。', 'error'); return; }
+      const body = { className, point: capturedPoint, radius: Number($('radiusInput').value), active: $('activeInput').checked };
+      try {
+        const result = await api('/api/admin/settings', authOptions('PUT', body));
+        settings = result.settings;
+        hideMessage(feedback); render(); closeSettings();
+      } catch (error) { showMessage(settingsFeedback, error.message, 'error'); }
+    });
+    $('checkinButton').addEventListener('click', async () => {
+      hideMessage(feedback);
+      const name = $('studentName').value.trim();
+      const studentId = $('studentId').value.trim();
+      if (!name || !studentId) { showMessage(feedback, '请先填写姓名和学号。', 'error'); return; }
+      $('checkinButton').disabled = true;
+      $('checkinButton').textContent = '正在获取位置…';
+      showMessage(feedback, '正在获取当前位置并验证签到范围…', 'info');
+      try {
+        const coords = await getPosition();
+        const result = await api('/api/checkin', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ name, studentId, lat: coords.latitude, lon: coords.longitude }) });
+        showMessage(feedback, `签到成功，欢迎到课！定位距离课堂约 ${Math.round(result.distanceMeters)} 米。`, 'success');
+        await refreshPublic();
+        if (adminUnlocked) await loadAdminData();
+      } catch (error) { showMessage(feedback, error.message, 'error'); }
+      finally { render(); }
+    });
+    $('exportButton').addEventListener('click', () => {
+      if (!adminUnlocked) { $('openSettings').click(); showMessage(settingsFeedback, '请验证教师管理密码后导出名单。', 'info'); return; }
+      if (!records.length) { showMessage(feedback, '目前没有可导出的签到记录。', 'info'); return; }
+      const csv = [['姓名','学号','签到时间','距课堂（米）'], ...records.map((record) => [record.name, record.studentId, new Date(record.checkedInAt).toLocaleString('zh-CN'), Math.round(record.distanceMeters)])]
+        .map((row) => row.map((cell) => `"${String(cell).replace(/^[=+@-]/, "'$&").replace(/"/g,'""')}"`).join(',')).join('\r\n');
+      const blob = new Blob(['\ufeff' + csv], { type: 'text/csv;charset=utf-8' });
+      const link = document.createElement('a'); link.href = URL.createObjectURL(blob); link.download = `签到名单-${new Date().toLocaleDateString('sv-SE')}.csv`; link.click(); URL.revokeObjectURL(link.href);
+    });
+    $('clearButton').addEventListener('click', () => {
+      if (!adminUnlocked) { $('openSettings').click(); showMessage(settingsFeedback, '请验证教师管理密码后清空记录。', 'info'); return; }
+      confirmDialog.showModal();
+    });
+    $('closeConfirm').addEventListener('click', () => confirmDialog.close());
+    $('keepRecords').addEventListener('click', () => confirmDialog.close());
+    $('confirmClear').addEventListener('click', async () => {
+      try { await api('/api/admin/attendance', authOptions('DELETE')); records = []; render(); hideMessage(feedback); }
+      catch (error) { showMessage(feedback, error.message, 'error'); }
+      finally { confirmDialog.close(); }
+    });
+    $('refreshButton').addEventListener('click', async () => {
+      try { await refreshPublic(); if (adminUnlocked) await loadAdminData(); }
+      catch (error) { showMessage(feedback, error.message, 'error'); }
+    });
+    render();
+    refreshPublic().catch(() => showMessage(feedback, '服务尚未部署完成，请稍后刷新页面。', 'error'));
+  </script>
+</body>
+</html>
