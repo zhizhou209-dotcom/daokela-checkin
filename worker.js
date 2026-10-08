@@ -3,6 +3,25 @@ const json = (data, status = 200) => new Response(JSON.stringify(data), {
   headers: { "content-type": "application/json; charset=utf-8", "cache-control": "no-store" },
 });
 
+const PAGES_ORIGIN = "https://zhizhou209-dotcom.github.io";
+function corsHeaders(request) {
+  if (request.headers.get("Origin") !== PAGES_ORIGIN) return null;
+  return {
+    "Access-Control-Allow-Origin": PAGES_ORIGIN,
+    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+    "Access-Control-Allow-Headers": "Authorization, Content-Type",
+    "Access-Control-Max-Age": "86400",
+    "Vary": "Origin",
+  };
+}
+function withCors(request, response) {
+  const allowed = corsHeaders(request);
+  if (!allowed) return response;
+  const headers = new Headers(response.headers);
+  for (const [key, value] of Object.entries(allowed)) headers.set(key, value);
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers });
+}
+
 function distanceMeters(a, b) {
   const rad = (n) => n * Math.PI / 180;
   const dLat = rad(b.lat - a.lat);
@@ -66,7 +85,7 @@ async function handleApi(request, env) {
     if (!row) return json({ error: "老师还没有设置课堂位置。" }, 409);
     if (!row.is_active) return json({ error: "本节课堂暂未开放签到。" }, 409);
     const meters = distanceMeters({ lat: row.latitude, lon: row.longitude }, { lat, lon });
-    if (meters > row.radius_meters) return json({ error: `当前位置距课堂约 ${Math.round(meters)} 米，超出 ${row.radius_meters} 米签到范围。`, distanceMeters: meters }, 403);
+    if (meters > row.radius_meters) return json({ error: "当前位置距课堂约 " + Math.round(meters) + " 米，超出 " + row.radius_meters + " 米签到范围。", distanceMeters: meters }, 403);
     const checkedInAt = new Date().toISOString();
     try {
       await env.DB.prepare("INSERT INTO attendance (name, student_id, checked_in_at, distance_meters) VALUES (?, ?, ?, ?)")
@@ -101,10 +120,14 @@ async function handleApi(request, env) {
       if (!className || className.length > 80) return json({ error: "课堂名称需为 1 至 80 个字符。" }, 400);
       if (!Number.isFinite(lat) || lat < -90 || lat > 90 || !Number.isFinite(lon) || lon < -180 || lon > 180) return json({ error: "请先获取有效的课堂定位点。" }, 400);
       if (![50, 100, 200, 300, 500].includes(radius)) return json({ error: "请选择有效的签到范围。" }, 400);
-      await env.DB.prepare(`INSERT INTO class_settings (id, class_name, latitude, longitude, radius_meters, is_active, updated_at)
-        VALUES (1, ?, ?, ?, ?, ?, ?)
-        ON CONFLICT(id) DO UPDATE SET class_name = excluded.class_name, latitude = excluded.latitude,
-        longitude = excluded.longitude, radius_meters = excluded.radius_meters, is_active = excluded.is_active, updated_at = excluded.updated_at`)
+      const updateSql = "INSERT INTO class_settings (id, class_name, latitude, longitude, radius_meters, is_active, updated_at)
+"
+        + "VALUES (1, ?, ?, ?, ?, ?, ?)
+"
+        + "ON CONFLICT(id) DO UPDATE SET class_name = excluded.class_name, latitude = excluded.latitude,
+"
+        + "longitude = excluded.longitude, radius_meters = excluded.radius_meters, is_active = excluded.is_active, updated_at = excluded.updated_at";
+      await env.DB.prepare(updateSql)
         .bind(className, lat, lon, radius, body.active ? 1 : 0, new Date().toISOString()).run();
       return json({ settings: { configured: true, className, point: { lat, lon }, radius, active: Boolean(body.active) } });
     }
@@ -127,8 +150,13 @@ export default {
   async fetch(request, env) {
     const { pathname } = new URL(request.url);
     if (pathname.startsWith("/api/")) {
-      try { return await handleApi(request, env); }
-      catch { return json({ error: "服务暂时不可用，请稍后重试。" }, 500); }
+      const headers = corsHeaders(request);
+      if (request.method === "OPTIONS") {
+        if (!headers) return new Response(null, { status: 403 });
+        return new Response(null, { status: 204, headers });
+      }
+      try { return withCors(request, await handleApi(request, env)); }
+      catch { return withCors(request, json({ error: "服务暂时不可用，请稍后重试。" }, 500)); }
     }
     return env.ASSETS.fetch(request);
   },
