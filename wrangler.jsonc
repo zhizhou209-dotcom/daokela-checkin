@@ -1,0 +1,19 @@
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "daokela-checkin",
+  "main": "worker.js",
+  "compatibility_date": "2026-10-08",
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"]
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "daokela-checkin",
+      "database_id": "bda631b9-9ae2-471e-b716-8de5b8a8da6b",
+      "migrations_dir": "migrations"
+    }
+  ]
+}
