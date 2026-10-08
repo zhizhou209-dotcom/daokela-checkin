@@ -120,13 +120,7 @@ async function handleApi(request, env) {
       if (!className || className.length > 80) return json({ error: "课堂名称需为 1 至 80 个字符。" }, 400);
       if (!Number.isFinite(lat) || lat < -90 || lat > 90 || !Number.isFinite(lon) || lon < -180 || lon > 180) return json({ error: "请先获取有效的课堂定位点。" }, 400);
       if (![50, 100, 200, 300, 500].includes(radius)) return json({ error: "请选择有效的签到范围。" }, 400);
-      const updateSql = "INSERT INTO class_settings (id, class_name, latitude, longitude, radius_meters, is_active, updated_at)
-"
-        + "VALUES (1, ?, ?, ?, ?, ?, ?)
-"
-        + "ON CONFLICT(id) DO UPDATE SET class_name = excluded.class_name, latitude = excluded.latitude,
-"
-        + "longitude = excluded.longitude, radius_meters = excluded.radius_meters, is_active = excluded.is_active, updated_at = excluded.updated_at";
+      const updateSql = "INSERT INTO class_settings (id, class_name, latitude, longitude, radius_meters, is_active, updated_at) VALUES (1, ?, ?, ?, ?, ?, ?) ON CONFLICT(id) DO UPDATE SET class_name = excluded.class_name, latitude = excluded.latitude, longitude = excluded.longitude, radius_meters = excluded.radius_meters, is_active = excluded.is_active, updated_at = excluded.updated_at";
       await env.DB.prepare(updateSql)
         .bind(className, lat, lon, radius, body.active ? 1 : 0, new Date().toISOString()).run();
       return json({ settings: { configured: true, className, point: { lat, lon }, radius, active: Boolean(body.active) } });
